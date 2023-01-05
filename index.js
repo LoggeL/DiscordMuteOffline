@@ -47,7 +47,11 @@ client.on('ready', async () => {
             console.log(`Added role ${offlineRole.name} to ${member.user.tag}`)
           )
           .catch(console.error)
-      } else if (member.roles.cache.has(offlineRole.id)) {
+      } else if (
+        member.roles.cache.has(offlineRole.id) &&
+        member.presence &&
+        member.presence.status !== 'offline'
+      ) {
         // Remove offline role
         member.roles
           .remove(offlineRole)
