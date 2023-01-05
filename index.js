@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits } = require('discord.js')
-const { roleName, token, deny } = require('./config.json')
+const { roleName, token, watchGuildID } = require('./config.json')
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildPresences],
@@ -10,8 +10,12 @@ client.on('ready', () => {
     `Logged in as ${client.user.tag}! Watching ${client.guilds.cache.size} guilds!`
   )
 
+  if (watchGuildID) console.log(`Watching guild ${watchGuildID}`)
+
   // Check for offline role
   for (const [guildId, guild] of client.guilds.cache) {
+    if (watchGuildID && guild.id !== watchGuildID) continue
+
     const offlineRole = guild.roles.cache.find((role) => role.name === roleName)
     if (!offlineRole) {
       console.log(`Offline role not found in guild ${guild.name} (${guildId})`)
@@ -27,15 +31,43 @@ client.on('ready', () => {
         .then((role) => console.log(`Created role ${role.name} (${role.id})`))
         .catch(console.error)
     }
+
+    // Check for offline members
+    for (const [memberId, member] of guild.members.cache) {
+      if (!member.presence || member.presence.status === 'offline') {
+        // Add offline role
+        member.roles
+          .add(offlineRole)
+          .then(() =>
+            console.log(`Added role ${offlineRole.name} to ${member.user.tag}`)
+          )
+          .catch(console.error)
+      } else {
+        // Remove offline role
+        member.roles
+          .remove(offlineRole)
+          .then(() =>
+            console.log(
+              `Removed role ${offlineRole.name} from ${member.user.tag}`
+            )
+          )
+          .catch(console.error)
+      }
+    }
   }
 })
 
 client.on('presenceUpdate', (oldPresence, newPresence) => {
+  if (watchGuildID && newPresence.guild.id !== watchGuildID) return
+
   // Get status
   const newStatus = newPresence.status
   const oldStatus = oldPresence.status
 
   if (newStatus === oldStatus) return
+
+  if (!newStatus) return console.log('No new status found!')
+  if (!oldStatus) return console.log('No old status found!')
 
   // Check if status is offline
   if (newStatus == 'offline' && oldStatus != 'offline') {
