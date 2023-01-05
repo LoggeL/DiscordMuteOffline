@@ -5,7 +5,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildPresences],
 })
 
-client.on('ready', () => {
+client.on('ready', async () => {
   console.log(
     `Logged in as ${client.user.tag}! Watching ${client.guilds.cache.size} guilds!`
   )
@@ -16,25 +16,30 @@ client.on('ready', () => {
   for (const [guildId, guild] of client.guilds.cache) {
     if (watchGuildID && guild.id !== watchGuildID) continue
 
-    const offlineRole = guild.roles.cache.find((role) => role.name === roleName)
+    let offlineRole = guild.roles.cache.find((role) => role.name === roleName)
     if (!offlineRole) {
       console.log(`Offline role not found in guild ${guild.name} (${guildId})`)
       // Create role
-      guild.roles
-        .create({
+      try {
+        offlineRole = await guild.roles.create({
           name: roleName,
           // decimal grey
           color: 8421504,
           reason: 'Offline role',
           permissions: 0n,
         })
-        .then((role) => console.log(`Created role ${role.name} (${role.id})`))
-        .catch(console.error)
+        console.log(`Created role ${offlineRole.name} (${offlineRole.id})`)
+      } catch (e) {
+        console.error(e)
+      }
     }
 
     // Check for offline members
     for (const [memberId, member] of guild.members.cache) {
-      if (!member.presence || member.presence.status === 'offline') {
+      if (
+        (!member.presence || member.presence.status === 'offline') &&
+        !member.roles.cache.has(offlineRole.id)
+      ) {
         // Add offline role
         member.roles
           .add(offlineRole)
@@ -42,7 +47,7 @@ client.on('ready', () => {
             console.log(`Added role ${offlineRole.name} to ${member.user.tag}`)
           )
           .catch(console.error)
-      } else {
+      } else if (member.roles.cache.has(offlineRole.id)) {
         // Remove offline role
         member.roles
           .remove(offlineRole)
