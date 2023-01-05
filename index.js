@@ -70,8 +70,8 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
   if (watchGuildID && newPresence.guild.id !== watchGuildID) return
 
   // Get status
-  const newStatus = newPresence.status
-  const oldStatus = oldPresence.status
+  const newStatus = newPresence?.status
+  const oldStatus = oldPresence?.status
 
   if (newStatus === oldStatus) return
 
